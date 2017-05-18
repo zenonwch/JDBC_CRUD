@@ -1,5 +1,6 @@
 package dao;
 
+import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import model.User;
 
 import java.sql.*;
@@ -16,11 +17,11 @@ import java.util.Date;
 
 public class UserDaoImpl implements UserDao {
 	public static void main(final String[] args) {
-		new UserDaoImpl().addUser(new User("Andrey", 34, true, new Date()));
+//		new UserDaoImpl().addUser(new User("Andrey", 34, true, new Date()));
+		new UserDaoImpl().updateUser(new User(1, "Andrey", 34, true, new Date()));
 	}
 
-	@Override
-	public void addUser(final User user) {
+	private void initDB() {
 		// connection to DB
 		try {
 			// this line of code check if Dirver exists, initialize it and regitster in the DriverManager
@@ -31,6 +32,11 @@ public class UserDaoImpl implements UserDao {
 		}
 
 		System.out.println("MySQL JDBC Driver Registered!");
+	}
+
+	@Override
+	public void addUser(final User user) {
+		initDB();
 
 		final String queryString = "INSERT INTO Test VALUES (NULL, ?, ?, ?, ?)";
 
@@ -61,7 +67,39 @@ public class UserDaoImpl implements UserDao {
 
 	@Override
 	public void updateUser(final User user) {
+		initDB();
 
+		final MysqlDataSource mysqlDataSource = new MysqlDataSource();
+		mysqlDataSource.setUrl("jdbc:mysql://localhost:3306/crud");
+		mysqlDataSource.setUser("root");
+		mysqlDataSource.setPassword("root");
+		final String queryString = "UPDATE Test SET name = ?, age = ?, isAdmin = ?, createdDate = ? WHERE id = ?";
+
+		try (final Connection connection = mysqlDataSource.getConnection();
+		     final PreparedStatement updateUser = connection.prepareStatement(queryString)) {
+
+
+			final int id = user.getId();
+			final String userName = user.getName();
+			final int age = user.getAge();
+			final boolean admin = user.isAdmin();
+			final long createDate = user.getCreatedDate().getTime();
+			final Timestamp timestamp = new Timestamp(createDate);
+
+			//create and execute sql statement to add new user to DB
+			updateUser.setString(1, userName);
+			updateUser.setInt(2, age);
+			updateUser.setBoolean(3, admin);
+			updateUser.setTimestamp(4, timestamp);
+			updateUser.setInt(5, id);
+
+			updateUser.executeUpdate();
+
+			System.out.println("Connected!!!");
+			System.out.println("User with id = " + id + " was updated!");
+		} catch (final SQLException ignored) {
+			System.out.println("Connection Failed!");
+		}
 	}
 
 	@Override

@@ -3,6 +3,7 @@ package model;
 import java.util.Date;
 
 public class User {
+	private int id;
 	private String name;
 	private int age;
 	private boolean admin;
@@ -13,6 +14,22 @@ public class User {
 		this.age = age;
 		this.admin = admin;
 		this.createdDate = createdDate;
+	}
+
+	public User(final int id, final String name, final int age, final boolean admin, final Date createdDate) {
+		this.id = id;
+		this.name = name;
+		this.age = age;
+		this.admin = admin;
+		this.createdDate = createdDate;
+	}
+
+	public int getId() {
+		return id;
+	}
+
+	public void setId(final int id) {
+		this.id = id;
 	}
 
 	public String getName() {
