@@ -16,10 +16,6 @@ import java.util.Date;
  */
 
 public class UserDaoImpl implements UserDao {
-	public static void main(final String[] args) {
-//		new UserDaoImpl().addUser(new User("Andrey", 34, true, new Date()));
-		new UserDaoImpl().updateUser(new User(1, "Andrey", 34, true, new Date()));
-	}
 
 	private void initDB() {
 		// connection to DB
@@ -32,6 +28,21 @@ public class UserDaoImpl implements UserDao {
 		}
 
 		System.out.println("MySQL JDBC Driver Registered!");
+	}
+
+	private MysqlDataSource getMySQLDataSource() {
+		final MysqlDataSource mysqlDataSource = new MysqlDataSource();
+		mysqlDataSource.setUrl("jdbc:mysql://localhost:3306/crud");
+		mysqlDataSource.setUser("root");
+		mysqlDataSource.setPassword("root");
+		return mysqlDataSource;
+	}
+
+	private PreparedStatement prepareSelectStatement(final Connection connection, final int userId) throws SQLException {
+		final String queryString = "SELECT * FROM Test WHERE id = ?";
+		final PreparedStatement ps = connection.prepareStatement(queryString);
+		ps.setInt(1, userId);
+		return ps;
 	}
 
 	@Override
@@ -66,18 +77,14 @@ public class UserDaoImpl implements UserDao {
 	}
 
 	@Override
-	public void updateUser(final User user) {
+	public boolean updateUser(final User user) {
 		initDB();
 
-		final MysqlDataSource mysqlDataSource = new MysqlDataSource();
-		mysqlDataSource.setUrl("jdbc:mysql://localhost:3306/crud");
-		mysqlDataSource.setUser("root");
-		mysqlDataSource.setPassword("root");
+		final MysqlDataSource mysqlDataSource = getMySQLDataSource();
 		final String queryString = "UPDATE Test SET name = ?, age = ?, isAdmin = ?, createdDate = ? WHERE id = ?";
 
 		try (final Connection connection = mysqlDataSource.getConnection();
 		     final PreparedStatement updateUser = connection.prepareStatement(queryString)) {
-
 
 			final int id = user.getId();
 			final String userName = user.getName();
@@ -93,27 +100,99 @@ public class UserDaoImpl implements UserDao {
 			updateUser.setTimestamp(4, timestamp);
 			updateUser.setInt(5, id);
 
-			updateUser.executeUpdate();
+			if (updateUser.executeUpdate() > 0) {
+				System.out.println("Connected!!!");
+				System.out.println("User with id = " + id + " was updated!");
+				return true;
+			}
 
-			System.out.println("Connected!!!");
-			System.out.println("User with id = " + id + " was updated!");
+			return false;
+
 		} catch (final SQLException ignored) {
 			System.out.println("Connection Failed!");
+			return false;
 		}
 	}
 
 	@Override
-	public void removeUser(final int userId) {
+	public boolean removeUser(final int userId) {
+		initDB();
 
+		final MysqlDataSource mysqlDataSource = getMySQLDataSource();
+		final String queryString = "DELETE FROM Test WHERE id = ?";
+
+		try (final Connection connection = mysqlDataSource.getConnection();
+		     final PreparedStatement deleteUser = connection.prepareStatement(queryString)) {
+
+			deleteUser.setInt(1, userId);
+
+			if (deleteUser.executeUpdate() > 0) {
+				System.out.println("Connected!!!");
+				System.out.println("User with id = " + userId + " was deleted!");
+				return true;
+			}
+
+			return false;
+
+		} catch (final SQLException ignored) {
+			System.out.println("Connection Failed!");
+			return false;
+		}
 	}
 
 	@Override
 	public User getUserById(final int userId) {
-		return null;
+		initDB();
+
+		User user = null;
+
+		final MysqlDataSource mysqlDataSource = getMySQLDataSource();
+
+		try (final Connection connection = mysqlDataSource.getConnection();
+		     final PreparedStatement selectUser = prepareSelectStatement(connection, userId);
+		     final ResultSet resultSet = selectUser.executeQuery()) {
+
+			while (resultSet.next()) {
+				final String userName = resultSet.getString(2);
+				final int age = resultSet.getInt(3);
+				final boolean admin = resultSet.getBoolean(4);
+				final Date createdDate = resultSet.getTimestamp(5);
+
+				user = new User(userId, userName, age, admin, createdDate);
+			}
+		} catch (final SQLException ignored) {
+			System.out.println("Connection Failed!");
+		}
+
+		return user;
 	}
 
 	@Override
 	public List<User> getAllUsers() {
-		return null;
+		initDB();
+
+		final MysqlDataSource mysqlDataSource = getMySQLDataSource();
+		final String queryString = "SELECT * FROM Test";
+
+		final List<User> allUsers = new ArrayList<>();
+
+		try (final Connection connection = mysqlDataSource.getConnection();
+		     final PreparedStatement selectUsers = connection.prepareStatement(queryString);
+		     final ResultSet resultSet = selectUsers.executeQuery()) {
+
+			while (resultSet.next()) {
+				final int userId = resultSet.getInt(1);
+				final String userName = resultSet.getString(2);
+				final int age = resultSet.getInt(3);
+				final boolean admin = resultSet.getBoolean(4);
+				final Date createdDate = resultSet.getTimestamp(5);
+
+				allUsers.add(new User(userId, userName, age, admin, createdDate));
+			}
+
+		} catch (final SQLException ignored) {
+			System.out.println("Connection failed!");
+		}
+		return allUsers;
 	}
 }
